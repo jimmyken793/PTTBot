@@ -1,4 +1,4 @@
-package jimmyken793;
+package jimmyken793.pttbot;
 
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -7,15 +7,26 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
+import java.lang.reflect.Constructor;
 import java.util.Date;
 
 import javax.swing.Timer;
+
+import jimmyken793.pttbot.controller.HumanControl;
+import jimmyken793.pttbot.events.EventHandler;
+import jimmyken793.pttbot.resource.SiteConfig;
+import jimmyken793.pttbot.resource.SiteHandlerBinding;
+import jimmyken793.pttbot.resource.SiteResource;
+import jimmyken793.pttbot.terminal.PTTTerminal;
+import jimmyken793.pttbot.terminal.Terminal;
 
 import org.zhouer.protocol.Protocol;
 import org.zhouer.protocol.SSH2;
 import org.zhouer.protocol.Telnet;
 import org.zhouer.utils.Convertor;
 import org.zhouer.utils.TextUtils;
+import org.zhouer.vt.Application;
 import org.zhouer.zterm.Messages;
 import org.zhouer.zterm.Resource;
 import org.zhouer.zterm.Site;
@@ -30,7 +41,7 @@ public class TelnetBot implements Runnable, HumanControl {
 	private String socks_host;
 	private int socks_port;
 
-	private Terminal vt;
+	private PTTTerminal vt;
 
 	private String iconname;
 	private String windowtitle;
@@ -39,6 +50,7 @@ public class TelnetBot implements Runnable, HumanControl {
 	private Protocol network;
 	private InputStream is;
 	private OutputStream os;
+	private PrintStream err = System.out;
 
 	// 自動重連用
 	private long startTime;
@@ -97,6 +109,7 @@ public class TelnetBot implements Runnable, HumanControl {
 	public void resetSelected() {
 		vt.resetSelected();
 	}
+
 	public void pasteText(String str) {
 		vt.pasteText(str);
 	}
@@ -131,7 +144,7 @@ public class TelnetBot implements Runnable, HumanControl {
 			os.write(b);
 		} catch (IOException e) {
 			// e.printStackTrace();
-			System.out.println("Caught IOException in Session::writeByte(...)");
+			err.println("Caught IOException in Session::writeByte(...)");
 			close(true);
 		}
 	}
@@ -142,7 +155,7 @@ public class TelnetBot implements Runnable, HumanControl {
 			os.write(buf, offset, len);
 		} catch (IOException e) {
 			// e.printStackTrace();
-			System.out.println("Caught IOException in Session::writeBytes(...)");
+			err.println("Caught IOException in Session::writeBytes(...)");
 			close(true);
 		}
 	}
@@ -298,7 +311,7 @@ public class TelnetBot implements Runnable, HumanControl {
 			// lastInputTime 在 writeByte, writeBytes 會被更新。
 			long now = new Date().getTime();
 			if (antiidle && isConnected() && (now - lastInputTime > antiIdleInterval)) {
-				// System.out.println( "Sent antiidle char" );
+				// err.println( "Sent antiidle char" );
 				// TODO: 設定 antiidle 送出的字元
 				if (site.protocol.equalsIgnoreCase(Protocol.TELNET)) {
 
@@ -405,14 +418,13 @@ public class TelnetBot implements Runnable, HumanControl {
 			}
 			site = new Site(host, host, port, prot);
 		} while (false);
-		System.out.print("init\n");
+		err.print("init\n");
 		// host 長度為零則不做事
 		if (h.length() == 0) {
 			return;
 		}
 		resource = new Resource();
 		conv = new Convertor();
-		BufferedImage bi = new BufferedImage(800, 600, BufferedImage.TYPE_INT_RGB);
 		initialize();
 	}
 
@@ -420,9 +432,7 @@ public class TelnetBot implements Runnable, HumanControl {
 		site = s;
 		resource = r;
 		conv = c;
-
 		initialize();
-
 	}
 
 	private void initialize() {
@@ -430,16 +440,14 @@ public class TelnetBot implements Runnable, HumanControl {
 		// FIXME: 預設成 host
 		windowtitle = site.host;
 		iconname = site.host;
-
 		// VT100
-		vt = new Terminal(this, resource, conv);
+		vt = new PTTTerminal((Application) this, this, resource, conv);
 
 		// FIXME: 是否應該在這邊設定？
 		vt.setEncoding(site.encoding);
 		vt.setEmulation(site.emulation);
 	}
 
-	@Override
 	public Dimension getSize() {
 		// TODO Auto-generated method stub
 		return null;
@@ -450,16 +458,12 @@ public class TelnetBot implements Runnable, HumanControl {
 		bot.run();
 	}
 
-	@Override
 	public void scroll(int lines) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
-	@Override
-	public void react(Terminal t) {
-		// TODO Auto-generated method stub
-		
+	public void react(TextArray t, Terminal terminal) {
 	}
 
 }

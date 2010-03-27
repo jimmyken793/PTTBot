@@ -1,25 +1,29 @@
-package jimmyken793;
+package jimmyken793.pttbot.terminal;
 
 import java.awt.Color;
-import java.awt.Font;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.JComponent;
 import javax.swing.Timer;
 
+import jimmyken793.pttbot.TextArray;
+import jimmyken793.pttbot.controller.HumanControl;
+import jimmyken793.pttbot.controller.PTTBot;
+
 import org.zhouer.utils.Convertor;
 import org.zhouer.utils.TextUtils;
+import org.zhouer.vt.Application;
 import org.zhouer.vt.Config;
 import org.zhouer.vt.User;
 
-public class Terminal extends JComponent {
+public class PTTTerminal extends JComponent implements TextArray ,Terminal{
 	private static final long serialVersionUID = -5704767444883397941L;
 
-	private HumanControl parent;
-
-	// 畫面的寬與高
-	private int width, height;
+	private Application parent;
+	private HumanControl controller;
 
 	// 模擬螢幕的相關資訊
 	private int maxrow, maxcol; // terminal 的大小
@@ -28,17 +32,6 @@ public class Terminal extends JComponent {
 	private int scrolllines; // scroll buffer 的行數
 	private int totalrow, totalcol; // 總 row, col 數，包含 scroll buffer
 	private int topmargin, buttommargin, leftmargin, rightmargin;
-
-	// 螢幕 translate 的座標
-	private int transx, transy;
-
-	// 字元的垂直與水平間距
-	private int fontverticalgap, fonthorizontalgap, fontdescentadj;
-
-	// 各種字型參數
-	private Font font;
-	private int fontwidth, fontheight, fontdescent;
-	private int fontsize;
 
 	// 處理來自使用者的事件
 	private User user;
@@ -67,10 +60,6 @@ public class Terminal extends JComponent {
 	// 目前的屬性及前景、背景色
 	private byte cattribute;
 	private byte cfgcolor, cbgcolor;
-
-	// 記錄螢幕上何處需要 repaint
-	private FIFOSet repaintSet;
-	private Object repaintLock;
 
 	// 判斷畫面上的網址
 	private boolean[][] isurl;
@@ -117,10 +106,6 @@ public class Terminal extends JComponent {
 	// private static final byte CR = 13;
 	// private static final byte SO = 14;
 	// private static final byte SI = 15;
-
-	// 閃爍用
-	private int text_blink_count, cursor_blink_count;
-	private boolean text_blink, cursor_blink;
 
 	// 調色盤
 	private static Color[] normal_colors = { new Color(0, 0, 0), new Color(128, 0, 0), new Color(0, 128, 0), new Color(128, 128, 0), new Color(0, 0, 128), new Color(128, 0, 128), new Color(0, 128, 128), new Color(192, 192, 192), };
@@ -172,11 +157,6 @@ public class Terminal extends JComponent {
 		addurl = false;
 		probablyurl = new Vector();
 
-		text_blink_count = 0;
-		cursor_blink_count = 0;
-		text_blink = true;
-		cursor_blink = true;
-
 		linefull = false;
 
 		keypadmode = NUMERIC_KEYPAD;
@@ -202,11 +182,6 @@ public class Terminal extends JComponent {
 		fgBuf = new byte[4];
 		bgBuf = new byte[4];
 		textBufPos = 0;
-
-		// 初始化記載重繪位置用 FIFOSet
-		// XXX: 假設 column 數小於 256
-		repaintSet = new FIFOSet(totalrow << 8);
-		repaintLock = new Object();
 
 		for (i = 0; i < totalrow; i++) {
 			for (j = 0; j < totalcol; j++) {
@@ -1431,25 +1406,22 @@ public class Terminal extends JComponent {
 		}
 	}
 
-	private void printBuffer() {
+	public void printBuffer() {
+		PrintStream file;
 		try {
-			//PrintStream file = new PrintStream(new FileOutputStream("screen.txt", false));
-			//file.println("Line:"+crow+", Length:"+getLine(crow).length());
-			//file.print(getLine(crow));
-			//System.out.print(new String(text[crow-1]));
-			System.out.println("Line:"+crow+", Length:"+getLine(crow).length());
-			System.out.println(getLine(crow));
-			/*
-			for (int i = 0; i < 24; i++) {
-				for (int ii = 0; ii < 80; ii++) {
-					file.printf("%s", text[i][ii]);
-					if (text[i][ii] > 127)
-						ii++;
-				}
-				file.print("\n");
-			}*/
+			file = new PrintStream(new FileOutputStream("screen1.txt", true));
+			// file.println("Line:"+crow+", Length:"+getLine(crow).length());
+			// file.print(getLine(crow));
+			// System.out.print(new String(text[crow-1]));
+			// System.out.println("Line:"+crow+", Length:"+getLine(crow).length());
+			// System.out.println(getLine(crow));
 		} catch (Exception e) {
-			System.out.println("Could not load file!");
+			// System.out.println("Could not load file!");
+			file = System.out;
+		}
+
+		for (int i = 1; i <= 24; i++) {
+			file.println(getLine(i));
 		}
 	}
 
@@ -1482,10 +1454,6 @@ public class Terminal extends JComponent {
 
 		if (lcol != ccol || lrow != crow) {
 
-			// 移動後游標應該是可見的
-			cursor_blink_count = 0;
-			cursor_blink = true;
-
 			// XXX: 只要游標有移動過，就清空 textBuf, 以減少收到不完整的字所造成的異狀
 			textBufPos = 0;
 
@@ -1494,68 +1462,8 @@ public class Terminal extends JComponent {
 		}
 	}
 
-	// TODO: rewrite draw
-	private void draw() {
-		/*
-		 * int w, h; int v, prow, pcol; int row, col; Graphics2D g; boolean
-		 * show_cursor, show_text, show_underline;
-		 * 
-		 * g = bi.createGraphics(); g.setFont(font);
-		 * 
-		 * // 畫面置中 g.translate(transx, transy);
-		 * 
-		 * // 設定 Anti-alias if (resource.getBooleanValue(Config.FONT_ANTIALIAS))
-		 * { g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-		 * RenderingHints.VALUE_TEXT_ANTIALIAS_ON); }
-		 * 
-		 * while (!repaintSet.isEmpty()) { // 取得下一個需要重繪的位置 synchronized
-		 * (repaintLock) { v = repaintSet.remove(); prow = v >> 8; pcol = v &
-		 * 0xff; }
-		 * 
-		 * // 取得待重繪的字在畫面上的位置 // 加上捲動的判斷 row = logicalRow(prow); col = pcol + 1;
-		 * 
-		 * // 若是需重繪的部份不在顯示範圍內則不理會 if (row < 1 || row > maxrow || col < 1 || col
-		 * > maxcol) { continue; }
-		 * 
-		 * // 本次待繪字元的左上角座標 h = (row - 1) * fontheight; w = (col - 1) *
-		 * fontwidth;
-		 * 
-		 * // 閃爍控制與色彩屬性 show_text = ((attributes[prow][pcol] & BLINK) == 0) ||
-		 * text_blink; show_cursor = physicalRow(crow) == prow && ccol == col &&
-		 * cursor_blink; show_underline = (attributes[prow][pcol] & UNDERLINE)
-		 * != 0;
-		 * 
-		 * // 填滿背景色 g.setColor(getColor(prow, pcol, BACKGROUND)); g.fillRect(w,
-		 * h, fontwidth, fontheight);
-		 * 
-		 * // 如果是游標所在處就畫出游標 if (show_cursor) { // TODO: 多幾種游標形狀
-		 * g.setColor(getColor(prow, pcol, CURSOR)); g.fillRect(w, h, fontwidth,
-		 * fontheight); }
-		 * 
-		 * // 空白不重繪前景文字，離開 if (mbc[prow][pcol] == 0) { continue; }
-		 * 
-		 * // 設為前景色 g.setColor(getColor(prow, pcol, FOREGROUND));
-		 * 
-		 * // 畫出文字 if (show_text) { // 利用 clip 的功能，只畫出部份（半個）中文字。 // XXX:
-		 * 每個中文都會畫兩次，又有 clip 的 overhead, 效率應該會受到蠻大的影響！ Shape oldclip =
-		 * g.getClip(); g.clipRect(w, h, fontwidth, fontheight);
-		 * g.drawString(Character.toString(text[prow][pcol - mbc[prow][pcol] +
-		 * 1]), w - fontwidth * (mbc[prow][pcol] - 1), h + fontheight -
-		 * fontdescent); g.setClip(oldclip); }
-		 * System.out.print(text[prow][pcol]); // 畫出底線 if (show_underline ||
-		 * isurl[prow][pcol]) { if (isurl[prow][pcol]) {
-		 * g.setColor(getColor(prow, pcol, URL)); } g.drawLine(w, h + fontheight
-		 * - 1, w + fontwidth - 1, h + fontheight - 1); } }
-		 * 
-		 * g.dispose();
-		 */
-	}
-
 	public void close() {
 		// TODO: 應該還有其他東西應該收尾
-
-		// 停止重繪用的 timer
-		ti.stop();
 
 		// 停止反應來自使用者的事件
 		removeKeyListener(user);
@@ -1566,18 +1474,15 @@ public class Terminal extends JComponent {
 	public void run() {
 		while (!parent.isClosed()) {
 			parse();
-			printBuffer();
-			parent.react(this);
-			// buffer 裡的東西都處理完才重繪
-			if (isBufferEmpty()) {
-				repaint();
-			}
+			// printBuffer();
+			controller.react(this, this);
 		}
 	}
 
-	public Terminal(HumanControl p, Config c, Convertor cv) {
+	public PTTTerminal(Application a, HumanControl p, Config c, Convertor cv) {
 		super();
-		parent = p;
+		parent = a;
+		controller = p;
 		resource = c;
 		conv = cv;
 		// 初始化一些變數、陣列
@@ -1585,7 +1490,6 @@ public class Terminal extends JComponent {
 		initArray();
 		initOthers();
 	}
-	
 
 	public char[][] getText() {
 		return text;
@@ -1598,7 +1502,11 @@ public class Terminal extends JComponent {
 	public int getCrow() {
 		return crow;
 	}
-	public String getLine(int n){
-		return new String(text[n-1]).replaceAll("\0", "");
+
+	public String getLine(int n) {
+		if (n >= 0 && n < text.length)
+			return new String(text[n - 1]).replaceAll("\0", "");
+		else
+			return null;
 	}
 }

@@ -2,7 +2,9 @@ package org.zhouer.vt;
 
 import java.awt.Dimension;
 
-public interface Application
+import jimmyken793.pttbot.controller.HumanControl;
+
+public interface Application extends HumanControl  
 {
 	public void showMessage( String msg );
 	public void showPopup( int x, int y );

@@ -1,4 +1,4 @@
-package jimmyken793;
+package jimmyken793.pttbot;
 
 import java.util.NoSuchElementException;
 
