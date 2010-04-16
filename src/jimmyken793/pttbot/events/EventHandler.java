@@ -21,7 +21,11 @@ public abstract class EventHandler {
 		this.sconfig=sconfig;
 	}
 
-	public EventHandler(){
+	public EventHandler(TextArray t, Terminal terminal,SiteResource sresource,SiteConfig sconfig){
+		this.terminal=terminal;
+		this.tarray=t;
+		this.sresource=sresource;
+		this.sconfig=sconfig;
 	}
 	public abstract void perform(TextArray t, Terminal terminal,SiteResource sresource,SiteConfig sconfig);
 	public abstract boolean check(TextArray t, Terminal terminal,SiteResource sresource,SiteConfig sconfig);

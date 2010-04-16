@@ -7,8 +7,8 @@ import jimmyken793.pttbot.terminal.PTTTerminal;
 import jimmyken793.pttbot.terminal.Terminal;
 
 public class EventUserPassword extends EventHandler {
-	public EventUserPassword() {
-		super();
+	public EventUserPassword(TextArray t, Terminal terminal,SiteResource sresource,SiteConfig sconfig) {
+		super(t, terminal,sresource,sconfig);
 	}
 
 	static int call = 0;

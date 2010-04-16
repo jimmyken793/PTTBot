@@ -7,21 +7,24 @@ import jimmyken793.pttbot.terminal.PTTTerminal;
 import jimmyken793.pttbot.terminal.Terminal;
 
 public class EventUserLogin extends EventHandler {
-	public EventUserLogin() {
-		super();
+	public EventUserLogin(TextArray t, Terminal terminal,SiteResource sresource,SiteConfig sconfig) {
+		super(t, terminal,sresource,sconfig);
 	}
 
 	static int call = 0;
-	static final String login_prompt="請輸入代號，或以 guest 參觀，或以 new 註冊:               ";
+	static final String login_prompt="請輸入代號，或以 guest 參觀，或以 new 註冊:";
 	public void perform(TextArray t, Terminal terminal,SiteResource sresource,SiteConfig sconfig) {
 		if (EventUserLogin.call == 0) {
-			if (sconfig.get("Username") != null)
+			if (sconfig.get("Username") != null){
 				terminal.pasteText(sconfig.get("Username")+"\n");
+			}else{
+				System.out.println("Username Not Found");
+			}
 			EventUserLogin.call++;
 		}
 	}
 	public boolean check(TextArray t, Terminal terminal,SiteResource sresource,SiteConfig sconfig) {
-		if(t.getLine(t.getCrow())==login_prompt){
+		if(t.getLine(t.getCrow()).matches(login_prompt)){
 			return true;
 		}
 		return false;

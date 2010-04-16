@@ -465,7 +465,7 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 
 		// VT100
 		vt = new VT100(this, resource, conv, bi);
-
+		controller=new PTTBot(resource);
 		// FIXME: 是否應該在這邊設定？
 		vt.setEncoding(site.encoding);
 		vt.setEmulation(site.emulation);
@@ -488,7 +488,7 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 		}
 
 	}
-	private HumanControl controller=new PTTBot();
+	private HumanControl controller;
 	//TODO: implement react
 	public void react(TextArray t,Terminal terminal) {
 		controller.react(t,terminal);
