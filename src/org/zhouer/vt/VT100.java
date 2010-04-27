@@ -2191,7 +2191,7 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 
 		while (!parent.isClosed()) {
 			parse();
-			parent.react(this,this);
+			parent.react();
 			// buffer 裡的東西都處理完才重繪
 			if (isBufferEmpty()) {
 				repaint();
@@ -2245,5 +2245,13 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 			return new String(text[n - 1]).replaceAll("\0", "");
 		else
 			return null;
+	}
+
+	public int getMcol() {
+		return maxcol;
+	}
+
+	public int getMrow() {
+		return maxrow;
 	}
 }

@@ -463,7 +463,7 @@ public class TelnetBot implements Runnable, HumanControl {
 
 	}
 
-	public void react(TextArray t, Terminal terminal) {
+	public void react() {
 	}
 
 }

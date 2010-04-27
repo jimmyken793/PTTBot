@@ -7,5 +7,9 @@ public interface TextArray {
 
 	public int getCrow();
 
+	public int getMrow();
+	
+	public int getMcol();
+	
 	public String getLine(int n);
 }

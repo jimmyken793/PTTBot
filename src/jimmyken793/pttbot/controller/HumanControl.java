@@ -7,5 +7,5 @@ import jimmyken793.pttbot.terminal.Terminal;
 import org.zhouer.vt.Application;
 
 public interface HumanControl {
-	public void react(TextArray t,Terminal terminal);
+	public void react();
 }

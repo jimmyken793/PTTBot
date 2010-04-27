@@ -1475,7 +1475,7 @@ public class PTTTerminal extends JComponent implements TextArray ,Terminal{
 		while (!parent.isClosed()) {
 			parse();
 			// printBuffer();
-			controller.react(this, this);
+			controller.react();
 		}
 	}
 
@@ -1508,5 +1508,13 @@ public class PTTTerminal extends JComponent implements TextArray ,Terminal{
 			return new String(text[n - 1]).replaceAll("\0", "");
 		else
 			return null;
+	}
+
+	public int getMcol() {
+		return maxcol;
+	}
+
+	public int getMrow() {
+		return maxrow;
 	}
 }
