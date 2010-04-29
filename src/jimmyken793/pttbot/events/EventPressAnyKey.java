@@ -12,9 +12,8 @@ public class EventPressAnyKey extends EventHandler {
 		super(t, terminal, sresource, sconfig);
 	}
 
-	static final String pattern=" ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄ 請按任意鍵繼續 ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄"; 
+	static final String pattern=" ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄ 請按任意鍵繼續 ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄  "; 
 	public boolean check(TextArray t, Terminal terminal, ResourceMap sresource, ResourceMap sconfig) {
-		// TODO Auto-generated method stub
 		if(t.getLine(t.getMrow()).matches(pattern)){
 			return true;
 		}

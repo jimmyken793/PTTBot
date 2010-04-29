@@ -19,11 +19,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.Timer;
 
-import jimmyken793.pttbot.TextArray;
 import jimmyken793.pttbot.controller.HumanControl;
 import jimmyken793.pttbot.controller.PTTBot;
-import jimmyken793.pttbot.terminal.PTTTerminal;
-import jimmyken793.pttbot.terminal.Terminal;
 
 import org.zhouer.protocol.Protocol;
 import org.zhouer.protocol.SSH2;
@@ -441,7 +438,7 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 
 		// 記錄連線開始的時間
 		startTime = new Date().getTime();
-
+		
 		vt.run();
 	}
 
@@ -489,8 +486,8 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 
 	}
 	private HumanControl controller;
-	//TODO: implement react
 	public void react() {
+		System.out.println("react");
 		controller.react();
 	}
 }

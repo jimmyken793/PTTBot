@@ -2191,10 +2191,10 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 
 		while (!parent.isClosed()) {
 			parse();
-			parent.react();
 			// buffer 裡的東西都處理完才重繪
 			if (isBufferEmpty()) {
 				repaint();
+				parent.react();
 			}
 		}
 	}
@@ -2241,9 +2241,17 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 	}
 
 	public String getLine(int n) {
-		if(n>=0&&n<text.length)
-			return new String(text[n - 1]).replaceAll("\0", "");
-		else
+		if (n >= 0 && n < text.length) {
+			String tmp = "";
+			String orig = new String(text[n - 1]).replace("\0", "");
+			int length = text[n - 1].length;
+			for (int i = 0; i < length; i++) {
+				if (mbc[n - 1][i] == 1) {
+					tmp = tmp + text[n - 1][i];
+				}
+			}
+			return tmp;
+		} else
 			return null;
 	}
 

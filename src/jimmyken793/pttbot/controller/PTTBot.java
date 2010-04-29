@@ -1,6 +1,7 @@
 package jimmyken793.pttbot.controller;
 
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 
@@ -26,7 +27,8 @@ public class PTTBot implements HumanControl {
 	private Resource rc;
 	private TextArray textArray;
 	private Terminal terminal;
-	public PTTBot(Resource rc,TextArray t, Terminal terminal) {
+
+	public PTTBot(Resource rc, TextArray t, Terminal terminal) {
 		sconfig = new ResourceMap(".zterm_pttconfig");
 		this.rc = rc;
 		String l = shbind.get("bot.events");
@@ -36,8 +38,8 @@ public class PTTBot implements HumanControl {
 		if (events_list == null) {
 			events_list = new String[0];
 		}
-		this.terminal=terminal;
-		textArray=t;
+		this.terminal = terminal;
+		textArray = t;
 		events = new EventHandler[events_list.length];
 		event_count = 0;
 		for (int i = 0; i < events_list.length; i++) {

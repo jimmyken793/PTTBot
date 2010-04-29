@@ -1,5 +1,7 @@
 package jimmyken793.pttbot.controller;
 
+import java.awt.event.ActionListener;
+
 import jimmyken793.pttbot.TextArray;
 import jimmyken793.pttbot.terminal.PTTTerminal;
 import jimmyken793.pttbot.terminal.Terminal;

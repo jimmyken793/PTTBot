@@ -13,7 +13,7 @@ public class EventUserLogin extends EventHandler {
 	}
 
 	static int call = 0;
-	static final String login_prompt="請輸入代號，或以 guest 參觀，或以 new 註冊:";
+	static final String login_prompt="請輸入代號，或以 guest 參觀，或以 new 註冊:               ";
 	public void perform(TextArray t, Terminal terminal,ResourceMap sresource,ResourceMap sconfig) {
 		if (EventUserLogin.call == 0) {
 			if (sconfig.containsKey("Username")){
