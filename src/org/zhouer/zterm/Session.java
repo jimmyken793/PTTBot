@@ -487,7 +487,6 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 	}
 	private HumanControl controller;
 	public void react() {
-		System.out.println("react");
 		controller.react();
 	}
 }

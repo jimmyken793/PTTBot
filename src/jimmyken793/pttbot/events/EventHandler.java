@@ -1,6 +1,7 @@
 package jimmyken793.pttbot.events;
 
 import jimmyken793.pttbot.TextArray;
+import jimmyken793.pttbot.controller.PTTBot;
 import jimmyken793.pttbot.resource.ResourceMap;
 import jimmyken793.pttbot.resource.SiteConfig;
 import jimmyken793.pttbot.resource.SiteResource;
@@ -12,6 +13,7 @@ public abstract class EventHandler {
 	protected TextArray tarray;
 	protected ResourceMap sresource;
 	protected ResourceMap sconfig;
+	protected PTTBot bot;
 	public void setTerminal(Terminal t) {
 		terminal=t;
 	}
@@ -22,12 +24,13 @@ public abstract class EventHandler {
 		this.sconfig=sconfig;
 	}
 
-	public EventHandler(TextArray t, Terminal terminal,ResourceMap sresource,ResourceMap sconfig){
-		this.terminal=terminal;
-		this.tarray=t;
+	public EventHandler(PTTBot bot,ResourceMap sresource,ResourceMap sconfig){
+		this.terminal=bot.getTerminal();
+		this.tarray=bot.getTextArray();
+		this.bot=bot;
 		this.sresource=sresource;
 		this.sconfig=sconfig;
 	}
-	public abstract void perform(TextArray t, Terminal terminal,ResourceMap sresource,ResourceMap sconfig);
-	public abstract boolean check(TextArray t, Terminal terminal,ResourceMap sresource,ResourceMap sconfig);
+	public abstract boolean perform(PTTBot bot,ResourceMap sresource,ResourceMap sconfig);
+	public abstract boolean check(PTTBot bot,ResourceMap sresource,ResourceMap sconfig);
 }

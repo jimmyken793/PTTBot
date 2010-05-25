@@ -1,6 +1,8 @@
-package jimmyken793.pttbot.events;
+package jimmyken793.pttbot.events.login;
 
 import jimmyken793.pttbot.TextArray;
+import jimmyken793.pttbot.controller.PTTBot;
+import jimmyken793.pttbot.events.EventHandler;
 import jimmyken793.pttbot.resource.ResourceMap;
 import jimmyken793.pttbot.resource.SiteConfig;
 import jimmyken793.pttbot.resource.SiteResource;
@@ -8,13 +10,13 @@ import jimmyken793.pttbot.terminal.PTTTerminal;
 import jimmyken793.pttbot.terminal.Terminal;
 
 public class EventUserPassword extends EventHandler {
-	public EventUserPassword(TextArray t, Terminal terminal,ResourceMap sresource,ResourceMap sconfig) {
-		super(t, terminal,sresource,sconfig);
+	public EventUserPassword(PTTBot bot,ResourceMap sresource,ResourceMap sconfig) {
+		super(bot,sresource,sconfig);
 	}
 
 	static int call = 0;
 	static final String password_prompt="請輸入您的密碼: ";
-	public void perform(TextArray t, Terminal terminal,ResourceMap sresource,ResourceMap sconfig) {
+	public boolean perform(PTTBot bot,ResourceMap sresource,ResourceMap sconfig) {
 		if (EventUserPassword.call == 0) {
 			if (sconfig.get("Password") != null){
 				System.out.print("password\n");
@@ -24,10 +26,11 @@ public class EventUserPassword extends EventHandler {
 			}
 			EventUserPassword.call++;
 		}
+		return false;
 	}
 
-	public boolean check(TextArray t, Terminal terminal,ResourceMap sresource,ResourceMap sconfig) {
-		if(t.getLine(t.getCrow()).matches(password_prompt)){
+	public boolean check(PTTBot bot,ResourceMap sresource,ResourceMap sconfig) {
+		if(tarray.getLine(tarray.getCrow()).matches(password_prompt)){
 			return true;
 		}
 		return false;

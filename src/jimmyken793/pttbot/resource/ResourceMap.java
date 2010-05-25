@@ -30,7 +30,6 @@ public class ResourceMap implements Map<String, String> {
 		} else {
 			try {
 				rc.createNewFile();
-				// System.out.println("rcfile: " + rc.getName() + " created.");
 			} catch (IOException e) {
 				System.out.println("catch IOException when create new rcfile.");
 			}
@@ -45,7 +44,6 @@ public class ResourceMap implements Map<String, String> {
 		File f;
 		String home = System.getProperty("user.home");
 		f = new File(home + File.separator + rcfile);
-		// System.out.println( f );
 		return f;
 	}
 

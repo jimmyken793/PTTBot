@@ -21,46 +21,61 @@ public class PTTBot implements HumanControl {
 	private static ResourceMap sresource = new ResourceMap(".zterm_pttresource");
 	private ResourceMap sconfig;
 	private static ResourceMap shbind = new ResourceMap(".zterm_botbinding");
-	private EventHandler[] events;
-	private String[] events_list;
+	private EventHandler[][] events;
 	private int event_count;
-	private Resource rc;
 	private TextArray textArray;
 	private Terminal terminal;
+	private String[] modes;
+	public static final int MODE_LOGIN = 0;
+	public static final int MODE_MAINMENU = 1;
+	public static final int MODE_NUM = 2;
+	private String[][] event_names;
+	private int mode = MODE_LOGIN;
+
+	private String[] getEventList(String key) {
+		String l = shbind.get("bot.events." + key);
+		if (l != null) {
+			return l.split(",");
+		} else {
+			return new String[0];
+		}
+	}
 
 	public PTTBot(Resource rc, TextArray t, Terminal terminal) {
+		modes = new String[MODE_NUM];
+		modes[0] = "login";
+		modes[1] = "mainMenu";
 		sconfig = new ResourceMap(".zterm_pttconfig");
-		this.rc = rc;
-		String l = shbind.get("bot.events");
-		if (l != null) {
-			events_list = l.split(",");
-		}
-		if (events_list == null) {
-			events_list = new String[0];
+		event_names = new String[MODE_NUM][];
+		for (int i = 0; i < MODE_NUM; i++) {
+			event_names[i] = getEventList(modes[i]);
 		}
 		this.terminal = terminal;
 		textArray = t;
-		events = new EventHandler[events_list.length];
-		event_count = 0;
-		for (int i = 0; i < events_list.length; i++) {
-			EventHandler e = getEvent(events_list[i], textArray, this.terminal);
-			if (e != null) {
-				events[event_count++] = e;
+		events = new EventHandler[MODE_NUM][];
+		for (int mode = 0; mode < MODE_NUM; mode++) {
+			events[mode] = new EventHandler[event_names[mode].length];
+			for (int i = 0; i < event_names[mode].length; i++) {
+				EventHandler e = getEvent(modes[mode],event_names[mode][i], textArray, this.terminal);
+				if (e != null) {
+					events[mode][i] = e;
+				}
 			}
 		}
 	}
 
-	private EventHandler getEvent(String name, TextArray t, Terminal terminal) {
+	@SuppressWarnings("unchecked")
+	private EventHandler getEvent(String mode,String name, TextArray t, Terminal terminal) {
 		try {
-			Class<EventHandler> cl = (Class<EventHandler>) Class.forName("jimmyken793.pttbot.events.Event" + name);
+			Class<EventHandler> cl = (Class<EventHandler>) Class.forName("jimmyken793.pttbot.events."+mode+".Event" + name);
 			Class<EventHandler> cl1 = (Class<EventHandler>) Class.forName("jimmyken793.pttbot.events.EventHandler");
-			Constructor constructor;
+			Constructor<EventHandler> constructor;
 			try {
-				constructor = cl.getConstructor(new Class[] { TextArray.class, Terminal.class, ResourceMap.class, ResourceMap.class });
+				constructor = cl.getConstructor(new Class[] { PTTBot.class, ResourceMap.class, ResourceMap.class });
 			} catch (Exception exc) {
-				constructor = cl1.getConstructor(new Class[] { TextArray.class, Terminal.class, ResourceMap.class, ResourceMap.class });
+				constructor = cl1.getConstructor(new Class[] { PTTBot.class, ResourceMap.class, ResourceMap.class });
 			}
-			EventHandler handler = (EventHandler) constructor.newInstance(new Object[] { t, terminal, sresource, sconfig });
+			EventHandler handler = (EventHandler) constructor.newInstance(new Object[] { this, sresource, sconfig });
 			return handler;
 		} catch (Exception exc) {
 			err.println("create Event " + name + " failed");
@@ -70,11 +85,33 @@ public class PTTBot implements HumanControl {
 
 	}
 
-	public void react() {
-		for (int i = 0; i < event_count; i++) {
-			if (events[i].check(textArray, terminal, sresource, sconfig)) {
-				events[i].perform(textArray, terminal, sresource, sconfig);
+	public synchronized void react() {
+		boolean changed = false;
+		for (int i = 0; i < events[mode].length && !changed; i++) {
+			if (events[mode][i].check(this, sresource, sconfig)) {
+				if(!changed)
+					changed = events[mode][i].perform(this, sresource, sconfig);
 			}
 		}
+		if (changed) {
+			System.out.println("mode change into " + mode);
+			react();
+		}
+	}
+
+	public void setmode(int mode) {
+		if (mode >= 0 && mode < MODE_NUM)
+			this.mode = mode;
+	}
+	public int getmode() {
+		return mode;
+	}
+
+	public Terminal getTerminal() {
+		return terminal;
+	}
+
+	public TextArray getTextArray() {
+		return textArray;
 	}
 }
