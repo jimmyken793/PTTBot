@@ -4,6 +4,7 @@ import jimmyken793.pttbot.TextArray;
 import jimmyken793.pttbot.controller.PTTBot;
 import jimmyken793.pttbot.events.EventHandler;
 import jimmyken793.pttbot.resource.ResourceMap;
+import jimmyken793.pttbot.terminal.Keyboard;
 import jimmyken793.pttbot.terminal.Terminal;
 
 public class EventFailedLogins extends EventHandler {
@@ -32,11 +33,13 @@ public class EventFailedLogins extends EventHandler {
 
 	public boolean perform(PTTBot bot, ResourceMap sresource, ResourceMap sconfig) {
 		int max = tarray.getMrow();
+		String content=new String();
 		for (int i = 1; i < max - 3; i++) {
-			System.out.println(tarray.getLine(i));
+			content+=tarray.getLine(i)+"\n";
 		}
+		bot.log_fail_login(content);
 		System.out.println("EventFailedLogins");
-		terminal.pasteText("\n");
+		terminal.pasteText(new String(Keyboard.K_ENTER));
 		return false;
 	}
 

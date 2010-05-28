@@ -4,11 +4,14 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.sql.SQLException;
 import java.util.HashMap;
 
 import org.zhouer.zterm.Resource;
 
 import jimmyken793.pttbot.TextArray;
+import jimmyken793.pttbot.database.Database;
+import jimmyken793.pttbot.database.FailedLoginLog;
 import jimmyken793.pttbot.events.EventHandler;
 import jimmyken793.pttbot.resource.ResourceMap;
 import jimmyken793.pttbot.resource.SiteConfig;
@@ -33,7 +36,7 @@ public class PTTBot implements HumanControl {
 	public static int MODE_NUM = 2;
 	private String[][] event_names;
 	private int mode = MODE_LOGIN;
-
+	private Database db;
 	private String[] getEventList(String key) {
 		String l = shbind.get("bot.events." + key);
 		if (l != null) {
@@ -54,7 +57,20 @@ public class PTTBot implements HumanControl {
 	public int get_mode_id(String name){
 		return mode_id.get(name);
 	}
+	public void log_fail_login(String content){
+		db.addFailedLoginLog(content);
+	}
+	public void log_announcement(String content){
+		db.addAnnouncement(content);
+	}
 	public PTTBot(Resource rc, TextArray t, Terminal terminal) {
+		try {
+			db=new Database();
+		} catch (ClassNotFoundException e1) {
+			e1.printStackTrace();
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+		}
 		String[] m=getModesList();
 		for(int i=0;i<m.length;i++){
 			mode_list.put(i, m[i]);

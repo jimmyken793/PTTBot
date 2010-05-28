@@ -24,9 +24,11 @@ public class EventPressAnyKey extends EventHandler {
 
 	public boolean perform(PTTBot bot, ResourceMap sresource, ResourceMap sconfig) {
 		int max=tarray.getCrow();
-		for(int i=1;i<=max;i++){
-			System.out.println(tarray.getLine(i));
+		String content=new String();
+		for (int i = 1; i < max - 3; i++) {
+			content+=tarray.getLine(i)+"\n";
 		}
+		bot.log_announcement(content);
 		terminal.pasteText("\n");
 		return false;
 	}

@@ -2,8 +2,8 @@
 <project basedir="." default="build" name="ZTerm">
     <property environment="env"/>
     <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.4"/>
-    <property name="source" value="1.4"/>
+    <property name="target" value="5"/>
+    <property name="source" value="5"/>
     <property name="ganymed" value="ganymed-ssh2-build211beta4.jar"/>
     <property name="ganymed-license" value="ganymed-ssh2-license.txt"/>
     <path id="ZTerm.classpath">
@@ -47,7 +47,7 @@
 
 	<target name="jar" depends="build">
 		<jar destfile="ZTerm.jar">
-			<fileset dir="." includes="org/**" excludes="**/*.java" />
+			<fileset dir="." includes="org/**, jimmyken793/**" excludes="**/*.java" />
 			<manifest>
 				<attribute name="Main-Class" value="org.zhouer.zterm.ZTerm" />
 				<attribute name="Class-Path" value="${ganymed}" />
@@ -57,7 +57,7 @@
 	
 	<target name="jar-win32" depends="build-win32">
 		<jar destfile="ZTerm-win32.jar">
-			<fileset dir="." includes="org/**, win32/**" excludes="**/*.java, **/*.c, **/*.h, **/*.dev" />
+			<fileset dir="." includes="org/**, win32/**, jimmyken793/**" excludes="**/*.java, **/*.c, **/*.h, **/*.dev" />
 			<manifest>
 				<attribute name="Main-Class" value="win32.WindowsZTerm" />
 				<attribute name="Class-Path" value="${ganymed}" />
