@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.util.HashMap;
 
 import org.zhouer.zterm.Resource;
 
@@ -25,10 +26,11 @@ public class PTTBot implements HumanControl {
 	private int event_count;
 	private TextArray textArray;
 	private Terminal terminal;
-	private String[] modes;
-	public static final int MODE_LOGIN = 0;
-	public static final int MODE_MAINMENU = 1;
-	public static final int MODE_NUM = 2;
+	private HashMap<Integer, String> mode_list = new HashMap<Integer, String>();
+	private HashMap<String,Integer> mode_id = new HashMap<String,Integer>();
+	public static int MODE_LOGIN = 0;
+	public static int MODE_MAINMENU = 1;
+	public static int MODE_NUM = 2;
 	private String[][] event_names;
 	private int mode = MODE_LOGIN;
 
@@ -41,22 +43,37 @@ public class PTTBot implements HumanControl {
 		}
 	}
 
+	private String[] getModesList() {
+		String l = shbind.get("bot.modes");
+		if (l != null) {
+			return l.split(",");
+		} else {
+			return new String[0];
+		}
+	}
+	public int get_mode_id(String name){
+		return mode_id.get(name);
+	}
 	public PTTBot(Resource rc, TextArray t, Terminal terminal) {
-		modes = new String[MODE_NUM];
-		modes[0] = "login";
-		modes[1] = "mainMenu";
+		String[] m=getModesList();
+		for(int i=0;i<m.length;i++){
+			mode_list.put(i, m[i]);
+			mode_id.put(m[i], i);
+		}
+		MODE_NUM=m.length;
 		sconfig = new ResourceMap(".zterm_pttconfig");
 		event_names = new String[MODE_NUM][];
 		for (int i = 0; i < MODE_NUM; i++) {
-			event_names[i] = getEventList(modes[i]);
+			event_names[i] = getEventList(mode_list.get(i));
 		}
 		this.terminal = terminal;
 		textArray = t;
 		events = new EventHandler[MODE_NUM][];
 		for (int mode = 0; mode < MODE_NUM; mode++) {
 			events[mode] = new EventHandler[event_names[mode].length];
+			String mode_name=mode_list.get(mode);
 			for (int i = 0; i < event_names[mode].length; i++) {
-				EventHandler e = getEvent(modes[mode],event_names[mode][i], textArray, this.terminal);
+				EventHandler e = getEvent(mode_name, event_names[mode][i], textArray, this.terminal);
 				if (e != null) {
 					events[mode][i] = e;
 				}
@@ -65,9 +82,9 @@ public class PTTBot implements HumanControl {
 	}
 
 	@SuppressWarnings("unchecked")
-	private EventHandler getEvent(String mode,String name, TextArray t, Terminal terminal) {
+	private EventHandler getEvent(String mode, String name, TextArray t, Terminal terminal) {
 		try {
-			Class<EventHandler> cl = (Class<EventHandler>) Class.forName("jimmyken793.pttbot.events."+mode+".Event" + name);
+			Class<EventHandler> cl = (Class<EventHandler>) Class.forName("jimmyken793.pttbot.events." + mode + ".Event" + name);
 			Class<EventHandler> cl1 = (Class<EventHandler>) Class.forName("jimmyken793.pttbot.events.EventHandler");
 			Constructor<EventHandler> constructor;
 			try {
@@ -86,15 +103,20 @@ public class PTTBot implements HumanControl {
 	}
 
 	public synchronized void react() {
+		try {
+			Thread.sleep(500);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} 
 		boolean changed = false;
 		for (int i = 0; i < events[mode].length && !changed; i++) {
 			if (events[mode][i].check(this, sresource, sconfig)) {
-				if(!changed)
+				if (!changed){
 					changed = events[mode][i].perform(this, sresource, sconfig);
+				}
 			}
 		}
 		if (changed) {
-			System.out.println("mode change into " + mode);
 			react();
 		}
 	}
@@ -103,6 +125,11 @@ public class PTTBot implements HumanControl {
 		if (mode >= 0 && mode < MODE_NUM)
 			this.mode = mode;
 	}
+	public void setmode(String modename) {
+		System.out.println("Mode Changed Into:"+modename);
+		setmode(mode_id.get(modename));
+	}
+
 	public int getmode() {
 		return mode;
 	}

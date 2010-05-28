@@ -14,30 +14,16 @@ public class EventTransState extends EventHandler {
 
 	@Override
 	public boolean check(PTTBot bot, ResourceMap sresource, ResourceMap sconfig) {
-		int mode = bot.getmode();
-		switch (mode) {
-		case PTTBot.MODE_LOGIN:
-			if (tarray.getLine(1).contains("【主功能表】")) {
-				return true;
-			}
-			break;
-		case PTTBot.MODE_MAINMENU:
-			break;
+		if (!tarray.getLine(1).contains("【主功能表】")) {
+			return false;
 		}
-		return false;
+		return true;
 	}
 
 	@Override
 	public boolean perform(PTTBot bot, ResourceMap sresource, ResourceMap sconfig) {
-		int mode = bot.getmode();
-		switch (mode) {
-		case PTTBot.MODE_LOGIN:
-			bot.setmode(PTTBot.MODE_MAINMENU);
-			return true;
-		case PTTBot.MODE_MAINMENU:
-			break;
-		}
-		return false;
+		bot.setmode("mainMenu");
+		return true;
 	}
 
 }
