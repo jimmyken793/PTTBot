@@ -3,6 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="var" path="JRE_LIB" sourcepath="JRE_SRC"/>
 	<classpathentry kind="con" path="/home/jimmy/source/zterm"/>
-	<classpathentry kind="lib" path="/home/jimmy/source/zterm/ganymed-ssh2-build211beta4.jar"/>
+	<classpathentry kind="lib" path="src/ganymed-ssh2-build211beta4.jar"/>
+	<classpathentry kind="lib" path="src/sqlitejdbc-v056.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
