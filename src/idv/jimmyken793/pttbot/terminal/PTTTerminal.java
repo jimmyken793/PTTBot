@@ -1,22 +1,12 @@
-package org.zhouer.vt;
+package idv.jimmyken793.pttbot.terminal;
 
 import idv.jimmyken793.pttbot.TextArray;
-import idv.jimmyken793.pttbot.terminal.Terminal;
+import idv.jimmyken793.pttbot.controller.HumanControl;
 
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.Shape;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Vector;
 
 import javax.swing.JComponent;
@@ -25,72 +15,15 @@ import javax.swing.Timer;
 
 import org.zhouer.utils.Convertor;
 import org.zhouer.utils.TextUtils;
+import org.zhouer.vt.Application;
+import org.zhouer.vt.Config;
+import org.zhouer.vt.User;
 
-class FIFOSet {
-	boolean[] contain;
-	int[] set;
-	int front, rear;
-
-	public void add(int v) {
-		if (contain[v] == true) {
-			return;
-		}
-
-		// XXX: 沒有檢查空間是否足夠
-
-		set[rear] = v;
-		contain[v] = true;
-
-		if (++rear == set.length) {
-			rear = 0;
-		}
-	}
-
-	public int remove() {
-		int v;
-
-		if (front == rear) {
-			throw new NoSuchElementException();
-		}
-
-		v = set[front];
-		contain[v] = false;
-
-		if (++front == set.length) {
-			front = 0;
-		}
-
-		return v;
-	}
-
-	public boolean isEmpty() {
-		return (front == rear);
-	}
-
-	/**
-	 * @param range
-	 *            Set 的值域 1...(range - 1)
-	 */
-	public FIFOSet(int range) {
-		front = rear = 0;
-
-		// 假設最多 256 column
-		contain = new boolean[range];
-		set = new int[range];
-
-		for (int i = 0; i < contain.length; i++) {
-			contain[i] = false;
-		}
-	}
-}
-
-public class VT100 extends JComponent implements TextArray, Terminal {
+public class PTTTerminal extends JComponent implements TextArray ,Terminal{
 	private static final long serialVersionUID = -5704767444883397941L;
 
 	private Application parent;
-
-	// 畫面的寬與高
-	private int width, height;
+	private HumanControl controller;
 
 	// 模擬螢幕的相關資訊
 	private int maxrow, maxcol; // terminal 的大小
@@ -100,22 +33,8 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 	private int totalrow, totalcol; // 總 row, col 數，包含 scroll buffer
 	private int topmargin, buttommargin, leftmargin, rightmargin;
 
-	// 螢幕 translate 的座標
-	private int transx, transy;
-
-	// 字元的垂直與水平間距
-	private int fontverticalgap, fonthorizontalgap, fontdescentadj;
-
-	// 各種字型參數
-	private Font font;
-	private int fontwidth, fontheight, fontdescent;
-	private int fontsize;
-
 	// 處理來自使用者的事件
 	private User user;
-
-	// 畫面
-	private BufferedImage bi;
 
 	// 各種參數
 	private Config resource;
@@ -141,10 +60,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 	// 目前的屬性及前景、背景色
 	private byte cattribute;
 	private byte cfgcolor, cbgcolor;
-
-	// 記錄螢幕上何處需要 repaint
-	private FIFOSet repaintSet;
-	private Object repaintLock;
 
 	// 判斷畫面上的網址
 	private boolean[][] isurl;
@@ -192,10 +107,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 	// private static final byte SO = 14;
 	// private static final byte SI = 15;
 
-	// 閃爍用
-	private int text_blink_count, cursor_blink_count;
-	private boolean text_blink, cursor_blink;
-
 	// 調色盤
 	private static Color[] normal_colors = { new Color(0, 0, 0), new Color(128, 0, 0), new Color(0, 128, 0), new Color(128, 128, 0), new Color(0, 0, 128), new Color(128, 0, 128), new Color(0, 128, 128), new Color(192, 192, 192), };
 
@@ -210,9 +121,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 
 	// 重繪用的 Timer
 	private Timer ti;
-
-	// 紀錄是否所有初始化動作皆已完成
-	private boolean init_ready;
 
 	private void initValue() {
 		// 讀入模擬終端機的大小，一般而言是 80 x 24
@@ -249,11 +157,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		addurl = false;
 		probablyurl = new Vector();
 
-		text_blink_count = 0;
-		cursor_blink_count = 0;
-		text_blink = true;
-		cursor_blink = true;
-
 		linefull = false;
 
 		keypadmode = NUMERIC_KEYPAD;
@@ -280,11 +183,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		bgBuf = new byte[4];
 		textBufPos = 0;
 
-		// 初始化記載重繪位置用 FIFOSet
-		// XXX: 假設 column 數小於 256
-		repaintSet = new FIFOSet(totalrow << 8);
-		repaintLock = new Object();
-
 		for (i = 0; i < totalrow; i++) {
 			for (j = 0; j < totalcol; j++) {
 				text[i][j] = ((char) 0);
@@ -299,34 +197,22 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 
 		for (i = 1; i < maxrow; i++) {
 			for (j = 1; j < maxcol; j++)
-				setRepaint(i, j);
+				;// setRepaint(i, j);
 		}
 	}
 
 	private void initOthers() {
-		// 進入 run() 以後才確定初始化完成
-		init_ready = false;
 
 		// 啟動閃爍控制 thread
-		ti = new Timer(250, new RepaintTask());
-		ti.start();
+		// TODO: link timer
+		// ti = new Timer(250, new RepaintTask());
+		// ti.start();
 
 		// 取消 focus traversal key, 這樣才能收到 tab.
 		setFocusTraversalKeysEnabled(false);
 
 		// Input Method Framework, set passive-client
 		enableInputMethods(true);
-
-		// 設定預設大小
-		// FIXME: magic number
-		setSize(new Dimension(800, 600));
-
-		// User
-		user = new User(parent, this, resource);
-
-		addKeyListener(user);
-		addMouseListener(user);
-		addMouseMotionListener(user);
 	}
 
 	/**
@@ -340,108 +226,7 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		return (toprow + row + totalrow - 1) % totalrow;
 	}
 
-	/**
-	 * 計算 prow 在目前畫面中的 row NOTE: 這不是 physicalRow 的反函數
-	 * 
-	 * @param prow
-	 * @return
-	 */
-	private int logicalRow(int prow) {
-		int row, tmptop = toprow - scrolluprow;
-		if (tmptop < 0) {
-			tmptop += totalrow;
-		}
-		row = prow - tmptop + 1;
-		if (row < 1) {
-			row += totalrow;
-		}
-
-		return row;
-	}
-
-	public void updateImage(BufferedImage b) {
-		bi = b;
-	}
-
-	public void updateSize() {
-		width = getWidth();
-		height = getHeight();
-
-		updateFont();
-		updateScreen();
-	}
-
-	/**
-	 * 重繪目前的畫面
-	 */
-	public void updateScreen() {
-		for (int i = 1; i <= maxrow; i++) {
-			for (int j = 1; j <= maxcol; j++) {
-				setRepaintPhysical(physicalRow(i - scrolluprow), j - 1);
-			}
-		}
-
-		repaint();
-	}
-
-	/**
-	 * updateFont 更新字型相關資訊
-	 */
-	public void updateFont() {
-		FontMetrics fm;
-		int fh, fw;
-
-		String family;
-		int style;
-
-		// 微調
-		fonthorizontalgap = resource.getIntValue(Config.FONT_HORIZONTAL_GAP);
-		fontverticalgap = resource.getIntValue(Config.FONT_VERTICLAL_GAP);
-		fontdescentadj = resource.getIntValue(Config.FONT_DESCENT_ADJUST);
-
-		// 設定 family
-		family = resource.getStringValue(Config.FONT_FAMILY);
-
-		// 設定 size
-		fontsize = resource.getIntValue(Config.FONT_SIZE);
-		if (fontsize == 0) {
-			// 按照螢幕的大小設定
-			fw = width / maxcol - fonthorizontalgap;
-			fh = height / maxrow - fontverticalgap;
-
-			if (fh > 2 * fw) {
-				fh = 2 * fw;
-			}
-			fontsize = fh;
-		}
-
-		// 設定 style（bold, italy, plain）
-		style = Font.PLAIN;
-		if (resource.getBooleanValue(Config.FONT_BOLD)) {
-			style |= Font.BOLD;
-		}
-		if (resource.getBooleanValue(Config.FONT_ITALY)) {
-			style |= Font.ITALIC;
-		}
-
-		// 建立 font instance
-		font = new Font(family, style, fontsize);
-
-		fm = getFontMetrics(font);
-
-		// XXX: 這裡對 fontheight 與 fontwidth 的假設可能有問題
-		fontheight = fontsize;
-		fontwidth = fontsize / 2;
-		fontdescent = (int) (1.0 * fm.getDescent() / fm.getHeight() * fontsize);
-
-		fontheight += fontverticalgap;
-		fontwidth += fonthorizontalgap;
-		fontdescent += fontdescentadj;
-
-		// 修改字型會影響 translate 的座標
-		transx = (width - fontwidth * maxcol) / 2;
-		transy = (height - fontheight * maxrow) / 2;
-	}
+	// TODO: delete updateFont
 
 	/**
 	 * 設定目前往上捲的行數
@@ -455,7 +240,7 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		// TODO: 應改可以不用每次都重繪整個畫面
 		for (int i = 1; i <= maxrow; i++) {
 			for (int j = 1; j <= maxcol; j++) {
-				setRepaintPhysical(physicalRow(i - scrolluprow), j - 1);
+				// setRepaintPhysical(physicalRow(i - scrolluprow), j - 1);
 			}
 		}
 		repaint();
@@ -518,39 +303,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 	}
 
 	/**
-	 * 設定最新畫面上的某個位置需要重繪
-	 * 
-	 * @param row
-	 * @param col
-	 */
-	private void setRepaint(int row, int col) {
-		if (row < 1 || row > maxrow || col < 1 || col > maxcol) {
-			return;
-		}
-
-		int prow = physicalRow(row);
-		synchronized (repaintLock) {
-			repaintSet.add((prow << 8) | (col - 1));
-		}
-	}
-
-	/**
-	 * 設定某個實際位置需要重繪
-	 * 
-	 * @param prow
-	 * @param pcol
-	 */
-	private void setRepaintPhysical(int prow, int pcol) {
-		if (prow < 0 || prow >= totalrow || pcol < 0 || pcol >= totalcol) {
-			return;
-		}
-
-		synchronized (repaintLock) {
-			repaintSet.add((prow << 8) | pcol);
-		}
-	}
-
-	/**
 	 * 重設選取區域
 	 */
 	public void resetSelected() {
@@ -558,277 +310,9 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 			for (int j = 0; j < totalcol; j++) {
 				if (selected[i][j]) {
 					selected[i][j] = false;
-					setRepaintPhysical(i, j);
 				}
 			}
 		}
-	}
-
-	/**
-	 * 設定選取區域
-	 * 
-	 * @param x1
-	 *            開始的 x 座標
-	 * @param y1
-	 *            開始的 y 座標
-	 * @param x2
-	 *            結束的 x 座標
-	 * @param y2
-	 *            結束的 y 座標
-	 */
-	public void setSelected(int x1, int y1, int x2, int y2) {
-		int i, j;
-		int r1, c1, r2, c2, tmp;
-		int prow;
-		boolean orig;
-
-		x1 -= transx;
-		y1 -= transy;
-		x2 -= transx;
-		y2 -= transy;
-
-		c1 = x1 / fontwidth + 1;
-		r1 = y1 / fontheight + 1;
-
-		c2 = x2 / fontwidth + 1;
-		r2 = y2 / fontheight + 1;
-
-		if (r1 > r2) {
-			tmp = r1;
-			r1 = r2;
-			r2 = tmp;
-
-			tmp = c1;
-			c1 = c2;
-			c2 = tmp;
-		} else if (r1 == r2) {
-			if (c1 > c2) {
-				tmp = c1;
-				c1 = c2;
-				c2 = tmp;
-			}
-		}
-
-		resetSelected();
-		// TODO: 只能選取當前畫面的內容，不會自動捲頁
-		for (i = 1; i <= maxrow; i++) {
-			for (j = 1; j <= maxcol; j++) {
-
-				prow = physicalRow(i - scrolluprow);
-
-				orig = selected[prow][j - 1];
-
-				if (i > r1 && i < r2) {
-					selected[prow][j - 1] = true;
-				} else if (i == r1 && i == r2) {
-					selected[prow][j - 1] = j >= c1 && j <= c2;
-				} else if (i == r1) {
-					selected[prow][j - 1] = (j >= c1);
-				} else if (i == r2) {
-					selected[prow][j - 1] = (j <= c2);
-				} else {
-					selected[prow][j - 1] = false;
-				}
-
-				if (selected[prow][j - 1] != orig) {
-					setRepaintPhysical(prow, j - 1);
-				}
-			}
-		}
-
-	}
-
-	/**
-	 * 選取連續的文字
-	 * 
-	 * @param x
-	 * @param y
-	 */
-	public void selectConsequtive(int x, int y) {
-		int c, r;
-		int i, beginx, endx;
-		int prow;
-
-		x -= transx;
-		y -= transy;
-
-		c = x / fontwidth + 1;
-		r = y / fontheight + 1;
-
-		// 超出螢幕範圍
-		if (c < 1 || c > maxcol || r < 1 || r > maxrow) {
-			return;
-		}
-
-		prow = physicalRow(r - scrolluprow);
-
-		// 往前找到第一個非空白的合法字元
-		for (beginx = c; beginx > 0; beginx--) {
-			if (mbc[prow][beginx - 1] == 0 || (mbc[prow][beginx - 1] == 1 && text[prow][beginx - 1] == ' ')) {
-				break;
-			}
-		}
-		// 向後 ...
-		for (endx = c; endx <= maxcol; endx++) {
-			if (mbc[prow][endx - 1] == 0 || (mbc[prow][endx - 1] == 1 && text[prow][endx - 1] == ' ')) {
-				break;
-			}
-		}
-
-		resetSelected();
-		// FIXME: 這裡還需要一些測試
-		for (i = beginx + 1; i < endx; i++) {
-			selected[prow][i - 1] = true;
-			setRepaintPhysical(prow, i - 1);
-		}
-	}
-
-	/**
-	 * 選取整行
-	 * 
-	 * @param x
-	 * @param y
-	 */
-	public void selectEntireLine(int x, int y) {
-		int c, r;
-		int prow;
-
-		x -= transx;
-		y -= transy;
-
-		c = x / fontwidth + 1;
-		r = y / fontheight + 1;
-
-		// 超出螢幕範圍
-		if (c < 1 || c > maxcol || r < 1 || r > maxrow) {
-			return;
-		}
-
-		resetSelected();
-		prow = physicalRow(r - scrolluprow);
-		for (int i = 1; i < maxcol; i++) {
-			selected[prow][i - 1] = true;
-			setRepaintPhysical(prow, i - 1);
-		}
-	}
-
-	/**
-	 * 滑鼠游標是否在網址上
-	 * 
-	 * @param x
-	 * @param y
-	 * @return
-	 */
-	public boolean coverURL(int x, int y) {
-		int c, r;
-		int prow;
-
-		x -= transx;
-		y -= transy;
-
-		c = x / fontwidth + 1;
-		r = y / fontheight + 1;
-
-		// 超出螢幕範圍
-		if (r < 1 || r > maxrow || c < 1 || c > maxcol) {
-			return false;
-		}
-
-		prow = physicalRow(r - scrolluprow);
-
-		return isurl[prow][c - 1];
-	}
-
-	/**
-	 * 取得滑鼠游標處的網址
-	 * 
-	 * @param x
-	 * @param y
-	 * @returnp
-	 */
-	public String getURL(int x, int y) {
-		StringBuffer sb = new StringBuffer();
-		int i;
-		int c, r;
-		int prow;
-
-		x -= transx;
-		y -= transy;
-
-		c = x / fontwidth + 1;
-		r = y / fontheight + 1;
-
-		// 超出螢幕範圍
-		if (r < 1 || r > maxrow || c < 1 || c > maxcol) {
-			return new String();
-		}
-
-		prow = physicalRow(r - scrolluprow);
-
-		// TODO: 可複製跨行的 url
-		for (i = c; i > 0 && isurl[prow][i - 1]; i--)
-			;
-		for (i++; i <= maxcol && isurl[prow][i - 1]; i++) {
-			if (mbc[prow][i - 1] == 1) {
-				sb.append(text[prow][i - 1]);
-			}
-		}
-
-		return sb.toString();
-	}
-
-	/**
-	 * 複製選取的文字
-	 * 
-	 * @return
-	 */
-	public String getSelectedText() {
-		// TODO: 這裡寫的不太好，應該再改進
-		int i, j, k;
-		boolean firstLine = true;
-		StringBuffer sb = new StringBuffer();
-
-		for (i = 0; i < totalrow; i++) {
-
-			// 若整行都沒被選取，直接換下一行
-			for (j = 0; j < totalcol; j++) {
-				if (selected[i][j]) {
-					break;
-				}
-			}
-			if (j == totalcol) {
-				continue;
-			}
-
-			// 除了第一個被選取行外，其餘每行開始前先加上換行
-			if (firstLine) {
-				firstLine = false;
-			} else {
-				sb.append("\n");
-			}
-
-			// 找到最後一個有資料的地方
-			for (j = totalcol - 1; j >= 0; j--) {
-				if (selected[i][j] && mbc[i][j] != 0) {
-					break;
-				}
-			}
-
-			for (k = 0; k <= j; k++) {
-				// 只複製選取的部份
-				if (selected[i][k]) {
-					if (mbc[i][k] == 0) {
-						// 後面還有資料，雖然沒資料但先替換成空白
-						sb.append(" ");
-					} else if (mbc[i][k] == 1) {
-						sb.append(text[i][k]);
-					}
-				}
-			}
-
-		}
-
-		return sb.toString();
 	}
 
 	/**
@@ -995,58 +479,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		return sb.toString();
 	}
 
-	public String getSelectedColorText() {
-		// TODO: 這裡寫的不太好，應該再改進
-		int i, j, k, last;
-		byte[] buf;
-		Vector a = new Vector(); // attributes
-		Vector b = new Vector(); // bytes
-		Vector fg = new Vector(); // foreground color
-		Vector bg = new Vector(); // background color
-		boolean needNewLine;
-
-		for (i = 0; i < totalrow; i++) {
-			needNewLine = false;
-
-			// 找到最後一個有資料的地方
-			for (last = totalcol - 1; last >= 0; last--) {
-				if (selected[i][last] && mbc[i][last] != 0) {
-					break;
-				}
-			}
-
-			for (j = 0; j <= last; j++) {
-				if (selected[i][j]) {
-					if (mbc[i][j] == 0) {
-						// 後面還有資料，沒資料的部份用空白取代
-						a.addElement(new Byte((byte) 0));
-						b.addElement(new Byte((byte) ' '));
-						fg.addElement(new Byte(defFg));
-						bg.addElement(new Byte(defBg));
-					} else if (mbc[i][j] == 1) {
-						buf = conv.charToBytes(text[i][j], encoding);
-						for (k = 0; k < buf.length; k++) {
-							b.addElement(new Byte(buf[k]));
-							// XXX: 因為最多使用兩格儲存屬性，若超過 2 bytes, 則以第二 bytes 屬性取代之。
-							a.addElement(new Byte(attributes[i][j + Math.min(k, 2)]));
-							fg.addElement(new Byte(fgcolors[i][j + Math.min(k, 2)]));
-							bg.addElement(new Byte(bgcolors[i][j + Math.min(k, 2)]));
-						}
-					}
-					needNewLine = true;
-				}
-			}
-			if (needNewLine) {
-				a.addElement(new Byte((byte) 0));
-				b.addElement(new Byte((byte) 0x0d));
-				fg.addElement(new Byte(defFg));
-				bg.addElement(new Byte(defBg));
-			}
-		}
-
-		return makePasteText(a, b, fg, bg);
-	}
-
 	public void pasteColorText(String str) {
 		byte[] tmp = new byte[str.length()];
 
@@ -1069,8 +501,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		bgcolors[prow][col - 1] = defBg;
 		attributes[prow][col - 1] = defAttr;
 		isurl[prow][col - 1] = false;
-
-		setRepaint(row, col);
 	}
 
 	private void copy(int dstrow, int dstcol, int srcrow, int srccol) {
@@ -1086,7 +516,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		attributes[pdstrow][dstcol - 1] = attributes[psrcrow][srccol - 1];
 		isurl[pdstrow][dstcol - 1] = isurl[psrcrow][srccol - 1];
 
-		setRepaint(dstrow, dstcol);
 	}
 
 	/**
@@ -1289,7 +718,7 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 			for (i = 1; i <= maxrow; i++) {
 				for (j = leftmargin; j <= rightmargin; j++) {
 					if (i <= buttommargin - line) {
-						setRepaint(i, j);
+						// setRepaint(i, j);
 					} else {
 						reset(i, j);
 					}
@@ -1392,7 +821,7 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 			pcol = v & 0xff;
 
 			isurl[prow][pcol] = true;
-			setRepaintPhysical(prow, pcol);
+			// setRepaintPhysical(prow, pcol);
 		}
 	}
 
@@ -1938,9 +1367,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 				scrollpage(1);
 				crow--;
 			}
-
-			// 游標會跳過行首，所以需要手動 setRepaint
-			setRepaint(crow, leftmargin);
 		}
 
 		// 一個 char 可能對應數個 bytes, 但在顯示及儲存時最雙寬字多佔兩格，單寬字最多佔一格，
@@ -1964,7 +1390,6 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 			// isurl 不同於 color 與 attribute, isurl 是在 setURL 內設定。
 			isurl[prow][ccol + i - 1] = false;
 
-			setRepaint(crow, ccol + i);
 		}
 
 		// 重設 textBufPos
@@ -1978,6 +1403,25 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		if (ccol > rightmargin) {
 			linefull = true;
 			ccol--;
+		}
+	}
+
+	public void printBuffer() {
+		PrintStream file;
+		try {
+			file = new PrintStream(new FileOutputStream("screen1.txt", true));
+			// file.println("Line:"+crow+", Length:"+getLine(crow).length());
+			// file.print(getLine(crow));
+			// System.out.print(new String(text[crow-1]));
+			// System.out.println("Line:"+crow+", Length:"+getLine(crow).length());
+			// System.out.println(getLine(crow));
+		} catch (Exception e) {
+			// System.out.println("Could not load file!");
+			file = System.out;
+		}
+
+		for (int i = 1; i <= 24; i++) {
+			file.println(getLine(i));
 		}
 	}
 
@@ -2002,23 +1446,13 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 			fgBuf[textBufPos] = cfgcolor;
 			bgBuf[textBufPos] = cbgcolor;
 			textBufPos++;
-
 			// 如果已經可以組成一個合法的字，就將字紀錄下來並移動游標
 			if (conv.isValidMultiBytes(textBuf, 0, textBufPos, encoding)) {
 				insertTextBuf();
 			}
 		}
 
-		// 舊的游標位置需要重繪
-		setRepaint(lrow, lcol);
 		if (lcol != ccol || lrow != crow) {
-
-			// 移動後游標應該是可見的
-			cursor_blink_count = 0;
-			cursor_blink = true;
-
-			// 新的游標位置需要重繪
-			setRepaint(crow, ccol);
 
 			// XXX: 只要游標有移動過，就清空 textBuf, 以減少收到不完整的字所造成的異狀
 			textBufPos = 0;
@@ -2028,154 +1462,8 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 		}
 	}
 
-	private void draw() {
-		int w, h;
-		int v, prow, pcol;
-		int row, col;
-		Graphics2D g;
-		boolean show_cursor, show_text, show_underline;
-
-		g = bi.createGraphics();
-		g.setFont(font);
-
-		// 畫面置中
-		g.translate(transx, transy);
-
-		// 設定 Anti-alias
-		if (resource.getBooleanValue(Config.FONT_ANTIALIAS)) {
-			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		}
-
-		while (!repaintSet.isEmpty()) {
-			// 取得下一個需要重繪的位置
-			synchronized (repaintLock) {
-				v = repaintSet.remove();
-				prow = v >> 8;
-				pcol = v & 0xff;
-			}
-
-			// 取得待重繪的字在畫面上的位置
-			// 加上捲動的判斷
-			row = logicalRow(prow);
-			col = pcol + 1;
-
-			// 若是需重繪的部份不在顯示範圍內則不理會
-			if (row < 1 || row > maxrow || col < 1 || col > maxcol) {
-				continue;
-			}
-
-			// 本次待繪字元的左上角座標
-			h = (row - 1) * fontheight;
-			w = (col - 1) * fontwidth;
-
-			// 閃爍控制與色彩屬性
-			show_text = ((attributes[prow][pcol] & BLINK) == 0) || text_blink;
-			show_cursor = physicalRow(crow) == prow && ccol == col && cursor_blink;
-			show_underline = (attributes[prow][pcol] & UNDERLINE) != 0;
-
-			// 填滿背景色
-			g.setColor(getColor(prow, pcol, BACKGROUND));
-			g.fillRect(w, h, fontwidth, fontheight);
-
-			// 如果是游標所在處就畫出游標
-			if (show_cursor) {
-				// TODO: 多幾種游標形狀
-				g.setColor(getColor(prow, pcol, CURSOR));
-				g.fillRect(w, h, fontwidth, fontheight);
-			}
-
-			// 空白不重繪前景文字，離開
-			if (mbc[prow][pcol] == 0) {
-				continue;
-			}
-
-			// 設為前景色
-			g.setColor(getColor(prow, pcol, FOREGROUND));
-
-			// 畫出文字
-			if (show_text) {
-				// 利用 clip 的功能，只畫出部份（半個）中文字。
-				// XXX: 每個中文都會畫兩次，又有 clip 的 overhead, 效率應該會受到蠻大的影響！
-				Shape oldclip = g.getClip();
-				g.clipRect(w, h, fontwidth, fontheight);
-				g.drawString(Character.toString(text[prow][pcol - mbc[prow][pcol] + 1]), w - fontwidth * (mbc[prow][pcol] - 1), h + fontheight - fontdescent);
-				g.setClip(oldclip);
-			}
-
-			// 畫出底線
-			if (show_underline || isurl[prow][pcol]) {
-				if (isurl[prow][pcol]) {
-					g.setColor(getColor(prow, pcol, URL));
-				}
-				g.drawLine(w, h + fontheight - 1, w + fontwidth - 1, h + fontheight - 1);
-			}
-		}
-
-		g.dispose();
-	}
-
-	class RepaintTask implements ActionListener {
-		public void actionPerformed(ActionEvent e) {
-			int prow;
-			boolean r = false;
-
-			text_blink_count++;
-			cursor_blink_count++;
-
-			// FIXME: magic number
-			// 游標閃爍
-			if (resource.getBooleanValue(Config.CURSOR_BLINK)) {
-				if (cursor_blink_count % 2 == 0) {
-					cursor_blink = !cursor_blink;
-					setRepaint(crow, ccol);
-					r = true;
-				}
-			}
-
-			// FIXME: magic number
-			// 文字閃爍
-			// 只需要檢查畫面上有沒有閃爍字，不需要全部都檢查
-			if (text_blink_count % 3 == 0) {
-				text_blink = !text_blink;
-				for (int i = 1; i <= maxrow; i++) {
-					for (int j = 1; j <= maxcol; j++) {
-						prow = physicalRow(i - scrolluprow);
-						if ((attributes[prow][j - 1] & BLINK) != 0) {
-							setRepaintPhysical(prow, j - 1);
-							r = true;
-						}
-					}
-				}
-			}
-
-			if (r) {
-				repaint();
-			}
-		}
-	}
-
-	public Dimension getPreferredSize() {
-		// FIXME: magic number
-		return new Dimension(800, 600);
-	}
-
-	public void setBounds(int x, int y, int w, int h) {
-		// layout manager 或其他人可能會透過 setBound 來改變 component 的大小，
-		// 此時要一併更新 component
-		super.setBounds(x, y, w, h);
-		updateSize();
-	}
-
-	public void setBounds(Rectangle r) {
-		super.setBounds(r);
-		updateSize();
-	}
-
 	public void close() {
 		// TODO: 應該還有其他東西應該收尾
-
-		// 停止重繪用的 timer
-		ti.stop();
 
 		// 停止反應來自使用者的事件
 		removeKeyListener(user);
@@ -2184,45 +1472,19 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 	}
 
 	public void run() {
-		// 連線後自動取得 focus
-		requestFocusInWindow();
-
-		// 至此應該所有的初始化動作都完成了
-		init_ready = true;
-
 		while (!parent.isClosed()) {
 			parse();
-			// buffer 裡的東西都處理完才重繪
-			if (isBufferEmpty()) {
-				repaint();
-				parent.react();
-			}
+			// printBuffer();
+			controller.react();
 		}
 	}
 
-	protected void paintComponent(Graphics g) {
-		// 因為多個分頁共用一張 image, 因此只有在前景的分頁才有繪圖的權利，
-		// 不在前景時不重繪，以免干擾畫面。
-		// 初始化完成之前不重繪。
-		if (!parent.isTabForeground() || !init_ready) {
-			return;
-		}
-
-		// TODO: 考慮 draw 是否一定要擺在這邊，或是是否只在這裡呼叫？
-		// 偶爾呼叫一次而不只是在顯示前才呼叫應該可以增進顯示速度。
-		draw();
-
-		g.drawImage(bi, 0, 0, null);
-	}
-
-	public VT100(Application p, Config c, Convertor cv, BufferedImage b) {
+	public PTTTerminal(Application a, HumanControl p, Config c, Convertor cv) {
 		super();
-
-		parent = p;
+		parent = a;
+		controller = p;
 		resource = c;
 		conv = cv;
-		bi = b;
-
 		// 初始化一些變數、陣列
 		initValue();
 		initArray();
@@ -2242,17 +1504,9 @@ public class VT100 extends JComponent implements TextArray, Terminal {
 	}
 
 	public String getLine(int n) {
-		if (n >= 0 && n < text.length) {
-			String tmp = "";
-			String orig = new String(text[n - 1]).replace("\0", "");
-			int length = text[n - 1].length;
-			for (int i = 0; i < length; i++) {
-				if (mbc[n - 1][i] == 1) {
-					tmp = tmp + text[n - 1][i];
-				}
-			}
-			return tmp;
-		} else
+		if (n >= 0 && n < text.length)
+			return new String(text[n - 1]).replaceAll("\0", "");
+		else
 			return null;
 	}
 

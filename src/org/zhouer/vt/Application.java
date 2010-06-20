@@ -1,8 +1,9 @@
 package org.zhouer.vt;
 
+import idv.jimmyken793.pttbot.controller.HumanControl;
+
 import java.awt.Dimension;
 
-import jimmyken793.pttbot.controller.HumanControl;
 
 public interface Application extends HumanControl  
 {

@@ -1,0 +1,6 @@
+bot.eventTypes::
+bot.modes::login,mainMenu,boardList,scanBoard
+bot.events.login::UserLogin,UserPassword,PressAnyKey,FailedLogins,DuplicatedLogin,TransState
+bot.events.mainMenu::MoveCursor
+bot.events.boardList::ScanFavorite
+bot.events.scanBoard::EnterBoard,EnterBoardScreen

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="var" path="JRE_LIB" sourcepath="JRE_SRC"/>
-	<classpathentry kind="con" path="/home/jimmy/source/zterm"/>
-	<classpathentry kind="lib" path="src/ganymed-ssh2-build211beta4.jar"/>
-	<classpathentry kind="lib" path="src/sqlitejdbc-v056.jar"/>
+	<classpathentry exported="true" kind="con" path="/home/jimmy/source/zterm"/>
+	<classpathentry exported="true" kind="lib" path="lib/ganymed-ssh2-build211beta4.jar"/>
+	<classpathentry kind="lib" path="lib/sqlitejdbc-v056.jar"/>
+	<classpathentry kind="lib" path="lib/ganymed-ssh2-build210.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

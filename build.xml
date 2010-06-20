@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project basedir="." default="build" name="ZTerm">
+    <property environment="env"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="6"/>
+    <property name="source" value="6"/>
+    <property name="ganymed" value="lib/ganymed-ssh2-build210.jar"/>
+    <property name="ganymed-license" value="lib/ganymed-ssh2-license.txt"/>
+    <property name="build.dir" location="build"/>
+    <path id="ZTerm.classpath">
+        <pathelement location="src"/>
+        <pathelement location="${ganymed}"/>
+    </path>
+    
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <copy includeemptydirs="false" todir="${build.dir}">
+            <fileset dir="src" excludes="**/*.launch, **/*.java"/>
+        </copy>
+    </target>
+    
+    <target name="clean">
+        <delete>
+            <fileset dir="src" includes="**/*.class"/>
+        </delete>
+    </target>
+    
+    <target name="build" depends="init">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" encoding="UTF-8" destdir="${build.dir}" source="${source}" target="${target}">
+            <src path="src"/>
+            <exclude name="macos/**"/>
+            <exclude name="win32/**"/>
+            <classpath refid="ZTerm.classpath"/>
+        </javac>
+    </target>
+    
+    <target name="build-win32" depends="build">
+        <javac debug="true" debuglevel="${debuglevel}" encoding="UTF-8" destdir="${build.dir}" source="${source}" target="${target}">
+            <src path="src"/>
+            <include name="win32/**"/>
+            <classpath refid="ZTerm.classpath"/>
+        </javac>
+    </target>
+    
+    <target name="run" depends="jar">
+        <java jar="ZTerm.jar" fork="true"/>
+    </target>
+    
+    <target name="jar" depends="build">
+        <jar destfile="ZTerm.jar">
+            <fileset dir="${build.dir}" includes="**/**"/>
+            <zipfileset src="lib/sqlitejdbc-v056.jar"/>
+            <zipfileset src="${ganymed}"/>
+            <manifest>
+                <attribute name="Main-Class" value="org.zhouer.zterm.ZTerm"/>
+            </manifest>
+        </jar>
+    </target>
+    
+    <target name="jar-win32" depends="build-win32">
+        <jar destfile="ZTerm-win32.jar">
+            <fileset dir="${build.dir}" includes="**/**" excludes="**/*.java, **/*.c, **/*.h, **/*.dev"/>
+            <zipfileset src="lib/sqlitejdbc-v056.jar"/>
+            <zipfileset src="${ganymed}"/>
+            
+            <manifest>
+                <attribute name="Main-Class" value="win32.WindowsZTerm"/>
+                <attribute name="Class-Path" value="${ganymed}"/>
+            </manifest>
+        </jar>
+    </target>
+    
+    <target name="zip" depends="jar">
+        <zip destfile="ZTerm.zip">
+            <zipfileset dir="src" includes="${ganymed}, ${ganymed-license}, ZTerm.jar, README, LICENSE" prefix="ZTerm"/>
+        </zip>
+    </target>
+    
+    <target name="zip-win32" depends="jar-win32">
+        <zip destfile="ZTerm-win32.zip">
+            <zipfileset dir="src" includes="${ganymed}, ${ganymed-license}, WindowsUtils.dll, README, LICENSE" prefix="ZTerm"/>
+            <zipfileset dir="src" includes="ZTerm-win32.jar" fullpath="ZTerm/ZTerm.jar"/>
+        </zip>
+    </target>
+    
+</project>

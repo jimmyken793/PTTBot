@@ -1,5 +1,9 @@
 package org.zhouer.zterm;
 
+import idv.jimmyken793.pttbot.controller.ControllerThread;
+import idv.jimmyken793.pttbot.controller.HumanControl;
+import idv.jimmyken793.pttbot.controller.PTTBot;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Point;
@@ -18,9 +22,6 @@ import java.util.Date;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.Timer;
-
-import jimmyken793.pttbot.controller.HumanControl;
-import jimmyken793.pttbot.controller.PTTBot;
 
 import org.zhouer.protocol.Protocol;
 import org.zhouer.protocol.SSH2;
@@ -429,16 +430,17 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 		// 連線成功，更新或新增連線紀錄
 		resource.addFavorite(site);
 		parent.updateFavoriteMenu();
-
+		//controller.run();
+		controller_thread=new ControllerThread(controller);
+		controller_thread.start();
+		//controller_thread.start();
 		// 防閒置用的 Timer
 		updateAntiIdleTime();
 		lastInputTime = new Date().getTime();
 		ti = new Timer(1000, new AntiIdleTask());
 		ti.start();
-
 		// 記錄連線開始的時間
 		startTime = new Date().getTime();
-		
 		vt.run();
 	}
 
@@ -462,7 +464,7 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 
 		// VT100
 		vt = new VT100(this, resource, conv, bi);
-		controller=new PTTBot(resource,this.vt,this.vt);
+		controller = new PTTBot(resource, this.vt, this.vt);
 		// FIXME: 是否應該在這邊設定？
 		vt.setEncoding(site.encoding);
 		vt.setEmulation(site.emulation);
@@ -485,8 +487,20 @@ public class Session extends JPanel implements Runnable, HumanControl, Applicati
 		}
 
 	}
+
 	private HumanControl controller;
+
+	int count=0;
+	private ControllerThread controller_thread;
 	public void react() {
-		controller.react();
+		System.out.println(count+++":React!");
+		System.out.flush();
+		synchronized (controller) {
+			try {
+				controller.notify();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }
